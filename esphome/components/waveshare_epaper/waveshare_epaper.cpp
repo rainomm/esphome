@@ -957,14 +957,6 @@ void WaveshareEPaper7P5InBV2::initialize() {
   this->data(0x3A);  // VDH=14V
   this->data(0x3A);  // VDL=-14V
   this->data(0x03);  // VDR=3V
-  // BOOSTER SETTING
-  this->command(0x06);
-  this->data(0x17);
-  this->data(0x17);
-  this->data(0x17);
-  this->data(0x17);
-  this->command(0x30);
-  this->data(0x06);
   // COMMAND POWER ON
   this->command(0x04);
   delay(100);  // NOLINT
@@ -972,12 +964,6 @@ void WaveshareEPaper7P5InBV2::initialize() {
   // COMMAND PANEL SETTING
   this->command(0x00);
   this->data(0x0F);     // KW3f, KWR-2F, BWROTP 0f, BWOTP 1f
-  // COMMAND PLL SETTING
-  this->command(0x30);
-  this->data(0x06);
-  // COMMAND VCOM DC SETTING
-  this->command(0x82);
-  this->data(0x24);  // VDCS=-1.30V
   // COMMAND RESOLUTION SETTING
   this->command(0x61);
   this->data(0x03);
