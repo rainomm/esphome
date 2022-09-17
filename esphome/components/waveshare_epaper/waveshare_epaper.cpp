@@ -954,9 +954,18 @@ void WaveshareEPaper7P5InBV2::initialize() {
   this->command(0x01);
   this->data(0x07);
   this->data(0x07);  // VGH=20V,VGL=-20V
-  this->data(0x3A);  // VDH=14V
-  this->data(0x3A);  // VDL=-14V
-  this->data(0x03);  // VDR=3V
+  this->data(0x3F);  // VDH=15V
+  this->data(0x3F);  // VDL=-15V
+  this->data(0x00);  // VDR=-2.4V
+  // BOOSTER SETTING
+  this->command(0x06);
+  this->data(0x17);
+  this->data(0x17);
+  this->data(0x0C);
+  this->data(0x17);
+  // COMMAND PLL SETTING
+  this->command(0x30);
+  this->data(0x06);
   // COMMAND POWER ON
   this->command(0x04);
   delay(100);  // NOLINT
@@ -964,18 +973,24 @@ void WaveshareEPaper7P5InBV2::initialize() {
   // COMMAND PANEL SETTING
   this->command(0x00);
   this->data(0x0F);     // KW3f, KWR-2F, BWROTP 0f, BWOTP 1f
+  // COMMAND PLL SETTING
+  this->command(0x30);
+  this->data(0x06);
+  // COMMAND VCOM DC SETTING
+  this->command(0x82);
+  this->data(0x24);
   // COMMAND RESOLUTION SETTING
   this->command(0x61);
   this->data(0x03);
   this->data(0x20);
-  this->data(0x02);
-  this->data(0x58);
+  this->data(0x01);
+  this->data(0xE0);
   // COMMAND DUAL SPI MODE
   this->command(0x15);
   this->data(0x00);
   // COMMAND VCOM AND DATA INTERVAL SETTING
   this->command(0x50);
-  this->data(0x11);
+  this->data(0x10);
   this->data(0x07);
   // COMMAND TCON SETTING
   this->command(0x60);
@@ -988,11 +1003,13 @@ void WaveshareEPaper7P5InBV2::initialize() {
   this->data(0x00);
 }
 void HOT WaveshareEPaper7P5InBV2::display() {
+  const uint32_t buffer_length = this->get_buffer_length_() / this->get_color_internal();
+
   // COMMAND DATA START TRANSMISSION 1 (B/W data)
   this->command(0x10);
   delay(2);
   this->start_data_();
-  this->write_array(this->buffer_, this->get_buffer_length_()/2);
+  this->write_array(this->buffer_, buffer_length);
   this->end_data_();
   delay(2);
 
@@ -1000,7 +1017,7 @@ void HOT WaveshareEPaper7P5InBV2::display() {
   this->command(0x13);
   delay(2);
   this->start_data_();
-  this->write_array(&this->buffer_[this->get_buffer_length_()/2], this->get_buffer_length_()/2);
+  this->write_array((this->buffer_ + buffer_length), buffer_length);
   this->end_data_();
   delay(2);
 
