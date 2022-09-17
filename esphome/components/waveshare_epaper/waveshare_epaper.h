@@ -25,6 +25,11 @@ class WaveshareEPaper : public PollingComponent,
   virtual void initialize() = 0;
   virtual void deep_sleep() = 0;
 
+  virtual int get_color_internal() { return 1; }
+  virtual uint8_t get_color_list_internal(uint8_t indexColor) {
+    return display::ColorUtil::color_to_332(display::COLOR_ON);
+  }
+
   void update() override;
 
   void fill(Color color) override;
@@ -220,7 +225,23 @@ class WaveshareEPaper4P2InBV2 : public WaveshareEPaper {
   void deep_sleep() override {
     // COMMAND VCOM AND DATA INTERVAL SETTING
     this->command(0x50);
-    this->data(0xF7);  // border floating
+    this->data(0x17);  // border floating
+
+    // COMMAND VCM DC SETTING
+    this->command(0x82);
+    // COMMAND PANEL SETTING
+    this->command(0x00);
+
+    delay(100);  // NOLINT
+
+    // COMMAND POWER SETTING
+    this->command(0x01);
+    this->data(0x00);
+    this->data(0x00);
+    this->data(0x00);
+    this->data(0x00);
+    this->data(0x00);
+    delay(100);  // NOLINT
 
     // COMMAND POWER OFF
     this->command(0x02);
@@ -230,6 +251,15 @@ class WaveshareEPaper4P2InBV2 : public WaveshareEPaper {
     this->command(0x07);
     this->data(0xA5);  // check code
   }
+
+  int get_color_internal() override { return 2; }
+
+  uint8_t get_color_list_internal(uint8_t indexColor) override {
+    if(indexColor == 1) return display::ColorUtil::color_to_332(Color(255, 0, 0, 0));
+    return display::ColorUtil::color_to_332(display::COLOR_ON);
+  }
+
+  display::DisplayType get_display_type() override { return display::DisplayType::DISPLAY_TYPE_COLOR; }
 
  protected:
   int get_width_internal() override;
@@ -276,6 +306,15 @@ class WaveshareEPaper7P5In : public WaveshareEPaper {
     this->command(0x07);
     this->data(0xA5);  // check byte
   }
+  
+  int get_color_internal() override { return 2; }
+
+  uint8_t get_color_list_internal(uint8_t indexColor) override {
+    if(indexColor == 1) return display::ColorUtil::color_to_332(Color(255, 0, 0, 0));
+    return display::ColorUtil::color_to_332(display::COLOR_ON);
+  }
+  
+  display::DisplayType get_display_type() override { return display::DisplayType::DISPLAY_TYPE_COLOR; }
 
  protected:
   int get_width_internal() override;
@@ -299,6 +338,15 @@ class WaveshareEPaper7P5InBV2 : public WaveshareEPaper {
     this->command(0x07);  // deep sleep
     this->data(0xA5);     // check byte
   }
+
+  int get_color_internal() override { return 2; }
+
+  uint8_t get_color_list_internal(uint8_t indexColor) override {
+    if(indexColor == 1) return display::ColorUtil::color_to_332(Color(255, 0, 0, 0));
+    return display::ColorUtil::color_to_332(display::COLOR_ON);
+  }
+  
+  display::DisplayType get_display_type() override { return display::DisplayType::DISPLAY_TYPE_COLOR; }
 
  protected:
   int get_width_internal() override;
