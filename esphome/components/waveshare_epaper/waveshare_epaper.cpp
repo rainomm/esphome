@@ -820,17 +820,22 @@ void WaveshareEPaper4P2InBV2::initialize() {
 }
 
 void HOT WaveshareEPaper4P2InBV2::display() {
-  const uint32_t buffer_length = this->get_buffer_length_()/this->get_color_internal();
+  const uint32_t buffer_length = this->get_buffer_length_();
+
   // COMMAND DATA START TRANSMISSION 1 (B/W data)
   this->command(0x10);
   this->start_data_();
-  this->write_array(this->buffer_, buffer_length);
+  for (uint32_t i = 0; i < buffer_length / 2; i++) {
+    this->data(~(this->buffer_[i]));
+  }
   this->end_data_();
 
   // COMMAND DATA START TRANSMISSION 2 (RED data)
   this->command(0x13);
   this->start_data_();
-  this->write_array((this->buffer_+buffer_length), buffer_length);
+  for (uint32_t i = buffer_length / 2; i < buffer_length / 2; i++) {
+    this->data(~(this->buffer_[i]));
+  }
   this->end_data_();
   delay(2);
 
@@ -1003,13 +1008,15 @@ void WaveshareEPaper7P5InBV2::initialize() {
   this->data(0x00);
 }
 void HOT WaveshareEPaper7P5InBV2::display() {
-  const uint32_t buffer_length = this->get_buffer_length_()/this->get_color_internal();
+  const uint32_t buffer_length = this->get_buffer_length_();
 
   // COMMAND DATA START TRANSMISSION 1 (B/W data)
   this->command(0x10);
   delay(2);
   this->start_data_();
-  this->write_array(this->buffer_, buffer_length);
+  for (uint32_t i = 0; i < buffer_length / 2; i++) {
+    this->data(~(this->buffer_[i]));
+  }
   this->end_data_();
   delay(2);
 
@@ -1017,7 +1024,9 @@ void HOT WaveshareEPaper7P5InBV2::display() {
   this->command(0x13);
   delay(2);
   this->start_data_();
-  this->write_array((this->buffer_+buffer_length), buffer_length);
+  for (uint32_t i = buffer_length / 2; i < buffer_length / 2; i++) {
+    this->data(~(this->buffer_[i]));
+  }
   this->end_data_();
   delay(2);
 
