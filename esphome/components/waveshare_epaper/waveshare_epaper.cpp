@@ -979,11 +979,11 @@ void WaveshareEPaper7P5InBV2::initialize() {
   this->command(0x82);
   this->data(0x24);  // VDCS=-1.30V
   // COMMAND RESOLUTION SETTING
-  this->command(0x61);  // tres
-  this->data(0x03);     // 800px
+  this->command(0x61);
+  this->data(0x03);
   this->data(0x20);
-  this->data(0x01);  // 400px
-  this->data(0xE0);
+  this->data(0x02);
+  this->data(0x58);
   // COMMAND DUAL SPI MODE
   this->command(0x15);
   this->data(0x00);
