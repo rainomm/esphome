@@ -992,7 +992,7 @@ void HOT WaveshareEPaper7P5InBV2::display() {
   this->command(0x10);
   delay(2);
   this->start_data_();
-  this->write_array(this->buffer_, this->get_buffer_length_());
+  this->write_array(this->buffer_, this->get_buffer_length_()/2);
   this->end_data_();
   delay(2);
 
@@ -1000,8 +1000,7 @@ void HOT WaveshareEPaper7P5InBV2::display() {
   this->command(0x13);
   delay(2);
   this->start_data_();
-  for (size_t i = 0; i < this->get_buffer_length_(); i++)
-    this->write_byte(0x00);
+  this->write_array(&this->buffer_[this->get_buffer_length_()/2], this->get_buffer_length_()/2);
   this->end_data_();
   delay(2);
 
