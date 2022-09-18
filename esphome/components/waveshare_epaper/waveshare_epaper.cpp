@@ -128,10 +128,15 @@ void WaveshareEPaper::update() {
   this->display();
 }
 void WaveshareEPaper::fill(Color color) {
-  // flip logic
-  const uint8_t fill = color.is_on() ? 0x00 : 0xFF;
-  for (uint32_t i = 0; i < this->get_buffer_length_(); i++)
-    this->buffer_[i] = fill;
+  const uint8_t color332 = display::ColorUtil::color_to_332(color);
+
+  for (uint8_t indexColor = 0; indexColor < this->get_color_internal(); indexColor++) {
+    uint32_t startPosColor = (this->get_buffer_length_() * indexColor);
+    uint32_t endPosColor = (this->get_buffer_length_() * (indexColor + 1));
+    uint8_t fill = (color332 == this->get_color_list_internal(indexColor)) ? 0x00 : 0xFF;
+    for (uint32_t i = startPosColor; i < endPosColor; i++)
+      this->buffer_[i] = fill;
+  }
 }
 void HOT WaveshareEPaper::draw_absolute_pixel_internal(int x, int y, Color color) {
   if (x >= this->get_width_internal() || y >= this->get_height_internal() || x < 0 || y < 0)
@@ -139,6 +144,15 @@ void HOT WaveshareEPaper::draw_absolute_pixel_internal(int x, int y, Color color
 
   const uint32_t pos = (x + y * this->get_width_internal()) / 8u;
   const uint8_t subpos = x & 0x07;
+  const uint8_t color332 = display::ColorUtil::color_to_332(color);
+
+  for (uint8_t indexColor = 0; indexColor < this->get_color_internal(); indexColor++) {
+    uint32_t posColor = (this->get_buffer_length_() * indexColor) + pos;
+    this->buffer_[posColor] &= ~(0x80 >> subpos);
+    if (color332 != this->get_color_list_internal(indexColor)) {
+      this->buffer_[posColor] |= (0x80 >> subpos);
+    }
+  }
   // flip logic
   if (!color.is_on()) {
     this->buffer_[pos] |= 0x80 >> subpos;
@@ -638,8 +652,7 @@ void HOT WaveshareEPaper2P9InB::display() {
   this->command(0x13);
   delay(2);
   this->start_data_();
-  for (size_t i = 0; i < this->get_buffer_length_(); i++)
-    this->write_byte(0x00);
+  this->write_array((this->buffer_ + this->get_buffer_length_()), this->get_buffer_length_());
   this->end_data_();
   delay(2);
 
@@ -817,8 +830,7 @@ void HOT WaveshareEPaper4P2InBV2::display() {
   // COMMAND DATA START TRANSMISSION 2 (RED data)
   this->command(0x13);
   this->start_data_();
-  for (size_t i = 0; i < this->get_buffer_length_(); i++)
-    this->write_byte(0xFF);
+  this->write_array((this->buffer_ + this->get_buffer_length_()), this->get_buffer_length_());
   this->end_data_();
   delay(2);
 
@@ -985,8 +997,7 @@ void HOT WaveshareEPaper7P5InBV2::display() {
   this->command(0x13);
   delay(2);
   this->start_data_();
-  for (size_t i = 0; i < this->get_buffer_length_(); i++)
-    this->write_byte(0x00);
+  this->write_array((this->buffer_ + this->get_buffer_length_()), this->get_buffer_length_());
   this->end_data_();
   delay(2);
 
