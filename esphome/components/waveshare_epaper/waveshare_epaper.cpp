@@ -967,7 +967,7 @@ void WaveshareEPaper7P5InBV2::initialize() {
   this->command(0x30);
   this->data(0x06);
 
-  // COMMAND POWER OFF
+  // COMMAND POWER ON
   this->command(0x04);
   delay(100);  // NOLINT
   this->wait_until_idle_();
