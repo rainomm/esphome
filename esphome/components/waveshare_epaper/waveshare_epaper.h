@@ -336,6 +336,17 @@ class WaveshareEPaper7P5InBV2 : public WaveshareEPaper {
   int get_width_internal() override;
 
   int get_height_internal() override;
+
+  void reset_() {
+    if (this->reset_pin_ != nullptr) {
+      this->reset_pin_->digital_write(true);
+      delay(200);  // NOLINT
+      this->reset_pin_->digital_write(false);
+      delay(2);
+      this->reset_pin_->digital_write(true);
+      delay(20);
+    }
+  }
 };
 
 class WaveshareEPaper7P5InBC : public WaveshareEPaper {
