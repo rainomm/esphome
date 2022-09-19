@@ -1,159 +1,455 @@
 #pragma once
-#include "esphome/core/color.h"
+
+#include "esphome/core/component.h"
+#include "esphome/components/spi/spi.h"
+#include "esphome/components/display/display_buffer.h"
 
 namespace esphome {
-namespace display {
-enum ColorOrder : uint8_t { COLOR_ORDER_RGB = 0, COLOR_ORDER_BGR = 1, COLOR_ORDER_GRB = 2 };
-enum ColorBitness : uint8_t { COLOR_BITNESS_888 = 0, COLOR_BITNESS_565 = 1, COLOR_BITNESS_332 = 2 };
-inline static uint8_t esp_scale(uint8_t i, uint8_t scale, uint8_t max_value = 255) { return (max_value * i / scale); }
+namespace waveshare_epaper {
 
-class ColorUtil {
+class WaveshareEPaper : public PollingComponent,
+                        public display::DisplayBuffer,
+                        public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_LOW,
+                                              spi::CLOCK_PHASE_LEADING, spi::DATA_RATE_2MHZ> {
  public:
-  static Color to_color(uint32_t colorcode, ColorOrder color_order,
-                        ColorBitness color_bitness = ColorBitness::COLOR_BITNESS_888, bool right_bit_aligned = true) {
-    uint8_t first_color, second_color, third_color;
-    uint8_t first_bits = 0;
-    uint8_t second_bits = 0;
-    uint8_t third_bits = 0;
+  void set_dc_pin(GPIOPin *dc_pin) { dc_pin_ = dc_pin; }
+  float get_setup_priority() const override;
+  void set_reset_pin(GPIOPin *reset) { this->reset_pin_ = reset; }
+  void set_busy_pin(GPIOPin *busy) { this->busy_pin_ = busy; }
+  void set_reset_duration(uint32_t reset_duration) { this->reset_duration_ = reset_duration; }
 
-    switch (color_bitness) {
-      case COLOR_BITNESS_888:
-        first_bits = 8;
-        second_bits = 8;
-        third_bits = 8;
-        break;
-      case COLOR_BITNESS_565:
-        first_bits = 5;
-        second_bits = 6;
-        third_bits = 5;
-        break;
-      case COLOR_BITNESS_332:
-        first_bits = 3;
-        second_bits = 3;
-        third_bits = 2;
-        break;
+  void command(uint8_t value);
+  void data(uint8_t value);
+
+  virtual void display() = 0;
+  virtual void initialize() = 0;
+  virtual void deep_sleep() = 0;
+
+  virtual int get_color_internal() { return 1; }
+  virtual uint8_t get_color_list_internal(uint8_t indexColor) {
+    return display::ColorUtil::color_to_332(display::COLOR_ON);
+  }
+
+  void update() override;
+
+  void fill(Color color) override;
+
+  void setup() override {
+    this->setup_pins_();
+    this->initialize();
+  }
+
+  void on_safe_shutdown() override;
+
+  display::DisplayType get_display_type() override { return display::DisplayType::DISPLAY_TYPE_BINARY; }
+
+ protected:
+  void draw_absolute_pixel_internal(int x, int y, Color color) override;
+
+  bool wait_until_idle_();
+
+  void setup_pins_();
+
+  void reset_() {
+    if (this->reset_pin_ != nullptr) {
+      this->reset_pin_->digital_write(false);
+      delay(reset_duration_);  // NOLINT
+      this->reset_pin_->digital_write(true);
+      delay(200);  // NOLINT
     }
-
-    first_color = right_bit_aligned ? esp_scale(((colorcode >> (second_bits + third_bits)) & ((1 << first_bits) - 1)),
-                                                ((1 << first_bits) - 1))
-                                    : esp_scale(((colorcode >> 16) & 0xFF), (1 << first_bits) - 1);
-
-    second_color = right_bit_aligned
-                       ? esp_scale(((colorcode >> third_bits) & ((1 << second_bits) - 1)), ((1 << second_bits) - 1))
-                       : esp_scale(((colorcode >> 8) & 0xFF), ((1 << second_bits) - 1));
-
-    third_color = (right_bit_aligned ? esp_scale(((colorcode >> 0) & ((1 << third_bits) - 1)), ((1 << third_bits) - 1))
-                                     : esp_scale(((colorcode >> 0) & 0xFF), (1 << third_bits) - 1));
-
-    Color color_return;
-
-    switch (color_order) {
-      case COLOR_ORDER_RGB:
-        color_return.r = first_color;
-        color_return.g = second_color;
-        color_return.b = third_color;
-        break;
-      case COLOR_ORDER_BGR:
-        color_return.b = first_color;
-        color_return.g = second_color;
-        color_return.r = third_color;
-        break;
-      case COLOR_ORDER_GRB:
-        color_return.g = first_color;
-        color_return.r = second_color;
-        color_return.b = third_color;
-        break;
-    }
-    return color_return;
   }
-  static inline Color rgb332_to_color(uint8_t rgb332_color) {
-    return to_color((uint32_t) rgb332_color, COLOR_ORDER_RGB, COLOR_BITNESS_332);
-  }
-  static uint8_t color_to_332(Color color, ColorOrder color_order = ColorOrder::COLOR_ORDER_RGB) {
-    uint16_t red_color, green_color, blue_color;
 
-    red_color = esp_scale8(color.red, ((1 << 3) - 1));
-    green_color = esp_scale8(color.green, ((1 << 3) - 1));
-    blue_color = esp_scale8(color.blue, (1 << 2) - 1);
+  uint32_t get_buffer_length_();
+  uint32_t reset_duration_{200};
 
-    switch (color_order) {
-      case COLOR_ORDER_RGB:
-        return red_color << 5 | green_color << 2 | blue_color;
-      case COLOR_ORDER_BGR:
-        return blue_color << 6 | green_color << 3 | red_color;
-      case COLOR_ORDER_GRB:
-        return green_color << 5 | red_color << 2 | blue_color;
-    }
-    return 0;
-  }
-  static uint16_t color_to_565(Color color, ColorOrder color_order = ColorOrder::COLOR_ORDER_RGB) {
-    uint16_t red_color, green_color, blue_color;
+  void start_command_();
+  void end_command_();
+  void start_data_();
+  void end_data_();
 
-    red_color = esp_scale8(color.red, ((1 << 5) - 1));
-    green_color = esp_scale8(color.green, ((1 << 6) - 1));
-    blue_color = esp_scale8(color.blue, (1 << 5) - 1);
-
-    switch (color_order) {
-      case COLOR_ORDER_RGB:
-        return red_color << 11 | green_color << 5 | blue_color;
-      case COLOR_ORDER_BGR:
-        return blue_color << 11 | green_color << 5 | red_color;
-      case COLOR_ORDER_GRB:
-        return green_color << 10 | red_color << 5 | blue_color;
-    }
-    return 0;
-  }
-  static uint32_t color_to_grayscale4(Color color) {
-    uint32_t gs4 = esp_scale8(color.white, 15);
-    return gs4;
-  }
-  /***
-   * Converts a Color value to an 8bit index using a 24bit 888 palette.
-   * Uses euclidiean distance to calculate the linear distance between
-   * two points in an RGB cube, then iterates through the full palette
-   * returning the closest match.
-   * @param[in] color The target color.
-   * @param[in] palette The 256*3 byte RGB palette.
-   * @return The 8 bit index of the closest color (e.g. for display buffer).
-   */
-  // static uint8_t color_to_index8_palette888(Color color, uint8_t *palette) {
-  static uint8_t color_to_index8_palette888(Color color, const uint8_t *palette) {
-    uint8_t closest_index = 0;
-    uint32_t minimum_dist2 = UINT32_MAX;  // Smallest distance^2 to the target
-                                          // so far
-    // int8_t(*plt)[][3] = palette;
-    int16_t tgt_r = color.r;
-    int16_t tgt_g = color.g;
-    int16_t tgt_b = color.b;
-    uint16_t x, y, z;
-    // Loop through each row of the palette
-    for (uint16_t i = 0; i < 256; i++) {
-      // Get the pallet rgb color
-      int16_t plt_r = (int16_t) palette[i * 3 + 0];
-      int16_t plt_g = (int16_t) palette[i * 3 + 1];
-      int16_t plt_b = (int16_t) palette[i * 3 + 2];
-      // Calculate euclidean distance (linear distance in rgb cube).
-      x = (uint32_t) std::abs(tgt_r - plt_r);
-      y = (uint32_t) std::abs(tgt_g - plt_g);
-      z = (uint32_t) std::abs(tgt_b - plt_b);
-      uint32_t dist2 = x * x + y * y + z * z;
-      if (dist2 < minimum_dist2) {
-        minimum_dist2 = dist2;
-        closest_index = (uint8_t) i;
-      }
-    }
-    return closest_index;
-  }
-  /***
-   * Converts an 8bit palette index (e.g. from a display buffer) to a color.
-   * @param[in] index The index to look up.
-   * @param[in] palette The 256*3 byte RGB palette.
-   * @return The RGBW Color object looked up by the palette.
-   */
-  static Color index8_to_color_palette888(uint8_t index, const uint8_t *palette) {
-    Color color = Color(palette[index * 3 + 0], palette[index * 3 + 1], palette[index * 3 + 2], 0);
-    return color;
-  }
+  GPIOPin *reset_pin_{nullptr};
+  GPIOPin *dc_pin_;
+  GPIOPin *busy_pin_{nullptr};
+  virtual uint32_t idle_timeout_() { return 1000u; }  // NOLINT(readability-identifier-naming)
 };
-}  // namespace display
+
+enum WaveshareEPaperTypeAModel {
+  WAVESHARE_EPAPER_1_54_IN = 0,
+  WAVESHARE_EPAPER_1_54_IN_V2,
+  WAVESHARE_EPAPER_2_13_IN,
+  WAVESHARE_EPAPER_2_9_IN,
+  WAVESHARE_EPAPER_2_9_IN_V2,
+  TTGO_EPAPER_2_13_IN,
+  TTGO_EPAPER_2_13_IN_B73,
+  TTGO_EPAPER_2_13_IN_B1,
+  TTGO_EPAPER_2_13_IN_B74,
+};
+
+class WaveshareEPaperTypeA : public WaveshareEPaper {
+ public:
+  WaveshareEPaperTypeA(WaveshareEPaperTypeAModel model);
+
+  void initialize() override;
+
+  void dump_config() override;
+
+  void display() override;
+
+  void deep_sleep() override {
+    if (this->model_ == WAVESHARE_EPAPER_2_9_IN_V2 || this->model_ == WAVESHARE_EPAPER_1_54_IN_V2) {
+      // COMMAND DEEP SLEEP MODE
+      this->command(0x10);
+      this->data(0x01);
+    } else {
+      // COMMAND DEEP SLEEP MODE
+      this->command(0x10);
+    }
+    this->wait_until_idle_();
+  }
+
+  void set_full_update_every(uint32_t full_update_every);
+
+ protected:
+  void write_lut_(const uint8_t *lut, uint8_t size);
+
+  int get_width_internal() override;
+
+  int get_height_internal() override;
+
+  uint32_t full_update_every_{30};
+  uint32_t at_update_{0};
+  WaveshareEPaperTypeAModel model_;
+  uint32_t idle_timeout_() override;
+};
+
+enum WaveshareEPaperTypeBModel {
+  WAVESHARE_EPAPER_2_7_IN = 0,
+  WAVESHARE_EPAPER_4_2_IN,
+  WAVESHARE_EPAPER_4_2_IN_B_V2,
+  WAVESHARE_EPAPER_7_5_IN,
+  WAVESHARE_EPAPER_7_5_INV2,
+  WAVESHARE_EPAPER_7_5_IN_B_V2,
+};
+
+class WaveshareEPaper2P7In : public WaveshareEPaper {
+ public:
+  void initialize() override;
+
+  void display() override;
+
+  void dump_config() override;
+
+  void deep_sleep() override {
+    // COMMAND DEEP SLEEP
+    this->command(0x07);
+    this->data(0xA5);  // check byte
+  }
+
+ protected:
+  int get_width_internal() override;
+
+  int get_height_internal() override;
+};
+
+class WaveshareEPaper2P9InB : public WaveshareEPaper {
+ public:
+  void initialize() override;
+
+  void display() override;
+
+  void dump_config() override;
+
+  void deep_sleep() override {
+    // COMMAND DEEP SLEEP
+    this->command(0x07);
+    this->data(0xA5);  // check byte
+  }
+
+ protected:
+  int get_width_internal() override;
+
+  int get_height_internal() override;
+};
+
+class WaveshareEPaper4P2In : public WaveshareEPaper {
+ public:
+  void initialize() override;
+
+  void display() override;
+
+  void dump_config() override;
+
+  void deep_sleep() override {
+    // COMMAND VCOM AND DATA INTERVAL SETTING
+    this->command(0x50);
+    this->data(0x17);  // border floating
+
+    // COMMAND VCM DC SETTING
+    this->command(0x82);
+    // COMMAND PANEL SETTING
+    this->command(0x00);
+
+    delay(100);  // NOLINT
+
+    // COMMAND POWER SETTING
+    this->command(0x01);
+    this->data(0x00);
+    this->data(0x00);
+    this->data(0x00);
+    this->data(0x00);
+    this->data(0x00);
+    delay(100);  // NOLINT
+
+    // COMMAND POWER OFF
+    this->command(0x02);
+    this->wait_until_idle_();
+    // COMMAND DEEP SLEEP
+    this->command(0x07);
+    this->data(0xA5);  // check byte
+  }
+
+ protected:
+  int get_width_internal() override;
+
+  int get_height_internal() override;
+};
+
+class WaveshareEPaper4P2InBV2 : public WaveshareEPaper {
+ public:
+  void initialize() override;
+
+  void display() override;
+
+  void dump_config() override;
+
+  void deep_sleep() override {
+    // COMMAND VCOM AND DATA INTERVAL SETTING
+    this->command(0x50);
+    this->data(0xF7);  // border floating
+
+    // COMMAND POWER OFF
+    this->command(0x02);
+    this->wait_until_idle_();
+
+    // COMMAND DEEP SLEEP
+    this->command(0x07);
+    this->data(0xA5);  // check code
+  }
+  
+  int get_color_internal() override { return 2; }
+
+  uint8_t get_color_list_internal(uint8_t indexColor) override {
+    if(indexColor == 1) return display::ColorUtil::color_to_332(Color(255, 0, 0, 0));
+    return display::ColorUtil::color_to_332(display::COLOR_ON);
+  }
+  
+  display::DisplayType get_display_type() override { return display::DisplayType::DISPLAY_TYPE_COLOR; }
+
+ protected:
+  int get_width_internal() override;
+
+  int get_height_internal() override;
+};
+
+class WaveshareEPaper5P8In : public WaveshareEPaper {
+ public:
+  void initialize() override;
+
+  void display() override;
+
+  void dump_config() override;
+
+  void deep_sleep() override {
+    // COMMAND POWER OFF
+    this->command(0x02);
+    this->wait_until_idle_();
+    // COMMAND DEEP SLEEP
+    this->command(0x07);
+    this->data(0xA5);  // check byte
+  }
+
+ protected:
+  int get_width_internal() override;
+
+  int get_height_internal() override;
+};
+
+class WaveshareEPaper7P5In : public WaveshareEPaper {
+ public:
+  void initialize() override;
+
+  void display() override;
+
+  void dump_config() override;
+
+  void deep_sleep() override {
+    // COMMAND POWER OFF
+    this->command(0x02);
+    this->wait_until_idle_();
+    // COMMAND DEEP SLEEP
+    this->command(0x07);
+    this->data(0xA5);  // check byte
+  }
+
+  int get_color_internal() override { return 2; }
+
+  uint8_t get_color_list_internal(uint8_t indexColor) override {
+    if(indexColor == 1) return display::ColorUtil::color_to_332(Color(255, 0, 0, 0));
+    return display::ColorUtil::color_to_332(display::COLOR_ON);
+  }
+  
+  display::DisplayType get_display_type() override { return display::DisplayType::DISPLAY_TYPE_COLOR; }
+
+ protected:
+  int get_width_internal() override;
+
+  int get_height_internal() override;
+};
+
+class WaveshareEPaper7P5InBV2 : public WaveshareEPaper {
+ public:
+  void initialize() override;
+
+  void display() override;
+
+  void dump_config() override;
+
+  void deep_sleep() override {
+    // COMMAND POWER OFF
+    this->command(0x02);
+    this->wait_until_idle_();
+    // COMMAND DEEP SLEEP
+    this->command(0x07);  // deep sleep
+    this->data(0xA5);     // check byte
+  }
+
+  int get_color_internal() override { return 2; }
+
+  uint8_t get_color_list_internal(uint8_t indexColor) override {
+    if(indexColor == 1) return display::ColorUtil::color_to_332(Color(255, 0, 0, 0));
+    return display::ColorUtil::color_to_332(display::COLOR_ON);
+  }
+
+  display::DisplayType get_display_type() override { return display::DisplayType::DISPLAY_TYPE_COLOR; }
+  
+ protected:
+  int get_width_internal() override;
+
+  int get_height_internal() override;
+};
+
+class WaveshareEPaper7P5InBC : public WaveshareEPaper {
+ public:
+  void initialize() override;
+
+  void display() override;
+
+  void dump_config() override;
+
+  void deep_sleep() override {
+    // COMMAND POWER OFF
+    this->command(0x02);
+    this->wait_until_idle_();
+    // COMMAND DEEP SLEEP
+    this->command(0x07);
+    this->data(0xA5);  // check byte
+  }
+
+ protected:
+  int get_width_internal() override;
+
+  int get_height_internal() override;
+};
+
+class WaveshareEPaper7P5InV2 : public WaveshareEPaper {
+ public:
+  void initialize() override;
+
+  void display() override;
+
+  void dump_config() override;
+
+  void deep_sleep() override {
+    // COMMAND POWER OFF
+    this->command(0x02);
+    this->wait_until_idle_();
+    // COMMAND DEEP SLEEP
+    this->command(0x07);
+    this->data(0xA5);  // check byte
+  }
+
+ protected:
+  int get_width_internal() override;
+
+  int get_height_internal() override;
+};
+
+class WaveshareEPaper7P5InV2alt : public WaveshareEPaper7P5InV2 {
+ public:
+  bool wait_until_idle_();
+  void initialize() override;
+  void dump_config() override;
+
+ protected:
+  void reset_() {
+    if (this->reset_pin_ != nullptr) {
+      this->reset_pin_->digital_write(true);
+      delay(200);  // NOLINT
+      this->reset_pin_->digital_write(false);
+      delay(2);
+      this->reset_pin_->digital_write(true);
+      delay(20);
+    }
+  };
+};
+
+class WaveshareEPaper7P5InHDB : public WaveshareEPaper {
+ public:
+  void initialize() override;
+
+  void display() override;
+
+  void dump_config() override;
+
+  void deep_sleep() override {
+    // deep sleep
+    this->command(0x10);
+    this->data(0x01);
+  }
+
+ protected:
+  int get_width_internal() override;
+
+  int get_height_internal() override;
+};
+
+class WaveshareEPaper2P13InDKE : public WaveshareEPaper {
+ public:
+  void initialize() override;
+
+  void display() override;
+
+  void dump_config() override;
+
+  void deep_sleep() override {
+    // COMMAND POWER DOWN
+    this->command(0x10);
+    this->data(0x01);
+    // cannot wait until idle here, the device no longer responds
+  }
+
+  void set_full_update_every(uint32_t full_update_every);
+
+ protected:
+  int get_width_internal() override;
+
+  int get_height_internal() override;
+
+  uint32_t idle_timeout_() override;
+
+  uint32_t full_update_every_{30};
+  uint32_t at_update_{0};
+};
+
+}  // namespace waveshare_epaper
 }  // namespace esphome
