@@ -1027,22 +1027,22 @@ void WaveshareEPaper7P5InBV3::initialize() {
 
   // COMMAND POWER SETTING
   this->command(0x01);
-  this->data(0x17);  // BD_EN=1 (00b: VCOM 01b: VBH(VCOM-VDL) 10b:VBL(VCOM-VDH) 11b: VDHR)
-  this->data(0x17);  // VCOM_SLEW=1 VGH=20V VGL=-20V
+  this->data(0x07);  // BD_EN=1 (00b: VCOM 01b: VDH 10b: VDL 11b: VDHR)
+  this->data(0x17);  // VGH=20V VGL=-20V
   this->data(0x3F);  // VDH=15.0V
   this->data(0x3F);  // VDL=-15.0V
-  this->data(0x11);  // VDHR=5.8V
+  this->data(0x03);  // VDL=3.0V
 
   // COMMAND VCOM DC SETTING
   this->command(0x82);
-  this->data(0x24);  // VDCS=-1.90V
+  this->data(0x00);  // VDCS=-0.10V
 
   // COMMAND BOOSTER SETTING
   this->command(0x06);
-  this->data(0x27); // BT_PHA -- Start=10mS Drive=5 Off=3.34uS
-  this->data(0x27); // BT_PHB -- Start=10mS Drive=5 Off=3.34uS
-  this->data(0x2F); // BT_PHC1 -- Drive=6 Off=3.34uS
-  this->data(0x17); // BT_PHC2 -- Drive=3 Off=3.34uS
+  this->data(0x27); // BT_PHA -- Start=10mS Drive=5 Off=6.58uS
+  this->data(0x27); // BT_PHB -- Start=10mS Drive=5 Off=6.58uS
+  this->data(0x2F); // BT_PHC1 -- Drive=6 Off=6.58uS
+  this->data(0x17); // BT_PHC2 -- Drive=3 Off=6.58uS
 
   // COMMAND PLL CLOCK FREQUENCY SETTING
   this->command(0x30);
