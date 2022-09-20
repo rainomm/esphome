@@ -1070,12 +1070,12 @@ void WaveshareEPaper7P5InBV3::initialize() {
 
   // COMMAND VCOM AND DATA INTERVAL SETTING
   this->command(0x50);
-  this->data(0x10);
-  this->data(0x07);
+  this->data(0x10); // BDZ=0 BDV=01(LUTW)  N2OCP=0 DDX=0(K/W)
+  this->data(0x07); // CDI=10 (VCOM and Data Interval)
   
   // COMMAND TCON SETTING
   this->command(0x60);
-  this->data(0x22);
+  this->data(0x22); // S2G/G2S=12
   
   // COMMAND GSST SETTING
   this->command(0x65);
