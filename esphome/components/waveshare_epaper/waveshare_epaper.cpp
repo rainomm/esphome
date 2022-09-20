@@ -947,15 +947,33 @@ void WaveshareEPaper5P8In::dump_config() {
   LOG_PIN("  Busy Pin: ", this->busy_pin_);
   LOG_UPDATE_INTERVAL(this);
 }
+bool WaveshareEPaper7P5InBV2::wait_until_idle_() {
+  if (this->busy_pin_ == nullptr) {
+    return true;
+  }
+
+  const uint32_t start = millis();
+  while (this->busy_pin_->digital_read()) {
+    this->command(0x71);
+    if (millis() - start > this->idle_timeout_()) {
+      ESP_LOGI(TAG, "Timeout while displaying image!");
+      return false;
+    }
+    delay(10);
+  }
+  return true;
+}
 void WaveshareEPaper7P5InBV2::initialize() {
+  this->reset_();
+
   // COMMAND POWER SETTING
   this->command(0x01);
   this->data(0x07);
-  this->data(0x17);
+  this->data(0x07);
   this->data(0x3F);
   this->data(0x3F);
-  this->data(0x00);
 
+  /*
   // BOOSTER SETTING
   this->command(0x06);
   this->data(0x17);
@@ -966,21 +984,26 @@ void WaveshareEPaper7P5InBV2::initialize() {
   // COMMAND PLL SETTING
   this->command(0x30);
   this->data(0x06);
+  */
 
   // COMMAND POWER ON
   this->command(0x04);
   delay(100);  // NOLINT
   this->wait_until_idle_();
+
   // COMMAND PANEL SETTING
   this->command(0x00);
   this->data(0x0F);     // KW3f, KWR-2F, BWROTP 0f, BWOTP 1f
 
+  /*
   // COMMAND PLL SETTING
   this->command(0x30);
   this->data(0x06);
+  
   // COMMAND VCOM DC SETTING
   this->command(0x82);
   this->data(0x24);
+  */
 
   // COMMAND RESOLUTION SETTING
   this->command(0x61);  // tres
@@ -988,16 +1011,20 @@ void WaveshareEPaper7P5InBV2::initialize() {
   this->data(0x20);
   this->data(0x01);  // 400px
   this->data(0xE0);
+  
   // COMMAND DUAL SPI MODE
   this->command(0x15);
   this->data(0x00);
+  
   // COMMAND VCOM AND DATA INTERVAL SETTING
   this->command(0x50);
-  this->data(0x10);
+  this->data(0x11);
   this->data(0x07);
+
   // COMMAND TCON SETTING
   this->command(0x60);
   this->data(0x22);
+  
   // COMMAND RESOLUTION SETTING
   this->command(0x65);
   this->data(0x00);

@@ -323,6 +323,8 @@ class WaveshareEPaper7P5InBV2 : public WaveshareEPaper {
     this->data(0xA5);     // check byte
   }
 
+  bool wait_until_idle_();
+
   int get_color_internal() override { return 2; }
 
   uint8_t get_color_list_internal(uint8_t indexColor) override {
@@ -346,7 +348,7 @@ class WaveshareEPaper7P5InBV2 : public WaveshareEPaper {
       this->reset_pin_->digital_write(true);
       delay(200);
     }
-  }
+  };
 };
 
 class WaveshareEPaper7P5InBC : public WaveshareEPaper {
