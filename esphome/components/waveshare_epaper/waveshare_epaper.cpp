@@ -1005,48 +1005,6 @@ void WaveshareEPaper7P5InBV2::dump_config() {
   LOG_PIN("  Busy Pin: ", this->busy_pin_);
   LOG_UPDATE_INTERVAL(this);
 }
-void WaveshareEPaper7P5In::initialize() {
-  // COMMAND POWER SETTING
-  this->command(0x01);
-  this->data(0x37);
-  this->data(0x00);
-  // COMMAND PANEL SETTING
-  this->command(0x00);
-  this->data(0xCF);
-  this->data(0x0B);
-  // COMMAND BOOSTER SOFT START
-  this->command(0x06);
-  this->data(0xC7);
-  this->data(0xCC);
-  this->data(0x28);
-  // COMMAND POWER ON
-  this->command(0x04);
-  this->wait_until_idle_();
-  delay(10);
-  // COMMAND PLL CONTROL
-  this->command(0x30);
-  this->data(0x3C);
-  // COMMAND TEMPERATURE SENSOR CALIBRATION
-  this->command(0x41);
-  this->data(0x00);
-  // COMMAND VCOM AND DATA INTERVAL SETTING
-  this->command(0x50);
-  this->data(0x77);
-  // COMMAND TCON SETTING
-  this->command(0x60);
-  this->data(0x22);
-  // COMMAND RESOLUTION SETTING
-  this->command(0x61);
-  this->data(0x02);
-  this->data(0x80);
-  this->data(0x01);
-  this->data(0x80);
-  // COMMAND VCM DC SETTING REGISTER
-  this->command(0x82);
-  this->data(0x1E);
-  this->command(0xE5);
-  this->data(0x03);
-}
 bool WaveshareEPaper7P5InBV3::wait_until_idle_() {
   if (this->busy_pin_ == nullptr) {
     return true;
@@ -1174,7 +1132,37 @@ void WaveshareEPaper7P5InBV3::initialize() {
   for (count = 0; count < 42; count++)
     this->data(lut_bb_7_i_n5_v2[count]);
 }
-
+void HOT WaveshareEPaper7P5InBV3::display() {
+  // COMMAND DATA START TRANSMISSION 1
+  this->command(0x10);
+  this->start_data_();
+  for (size_t i = 0; i < this->get_buffer_length_(); i++) {
+    uint8_t temp1 = this->buffer_[i];
+    for (uint8_t j = 0; j < 8; j++) {
+      uint8_t temp2;
+      if (temp1 & 0x80) {
+        temp2 = 0x03;
+      } else {
+        temp2 = 0x00;
+      }
+      temp2 <<= 4;
+      temp1 <<= 1;
+      j++;
+      if (temp1 & 0x80) {
+        temp2 |= 0x03;
+      } else {
+        temp2 |= 0x00;
+      }
+      temp1 <<= 1;
+      this->write_byte(temp2);
+    }
+    App.feed_wdt();
+  }
+  this->end_data_();
+  
+  // COMMAND DISPLAY REFRESH
+  this->command(0x12);
+}
 int WaveshareEPaper7P5InBV3::get_width_internal() { return 800; }
 int WaveshareEPaper7P5InBV3::get_height_internal() { return 480; }
 void WaveshareEPaper7P5InBV3::dump_config() {
@@ -1186,6 +1174,79 @@ void WaveshareEPaper7P5InBV3::dump_config() {
   LOG_UPDATE_INTERVAL(this);
 }
 void HOT WaveshareEPaper7P5InBV3::display() {
+  // COMMAND DATA START TRANSMISSION 1
+  this->command(0x10);
+  this->start_data_();
+  for (size_t i = 0; i < this->get_buffer_length_(); i++) {
+    uint8_t temp1 = this->buffer_[i];
+    for (uint8_t j = 0; j < 8; j++) {
+      uint8_t temp2;
+      if (temp1 & 0x80) {
+        temp2 = 0x03;
+      } else {
+        temp2 = 0x00;
+      }
+      temp2 <<= 4;
+      temp1 <<= 1;
+      j++;
+      if (temp1 & 0x80) {
+        temp2 |= 0x03;
+      } else {
+        temp2 |= 0x00;
+      }
+      temp1 <<= 1;
+      this->write_byte(temp2);
+    }
+    App.feed_wdt();
+  }
+  this->end_data_();
+  
+  // COMMAND DISPLAY REFRESH
+  this->command(0x12);
+}
+void WaveshareEPaper7P5In::initialize() {
+  // COMMAND POWER SETTING
+  this->command(0x01);
+  this->data(0x37);
+  this->data(0x00);
+  // COMMAND PANEL SETTING
+  this->command(0x00);
+  this->data(0xCF);
+  this->data(0x0B);
+  // COMMAND BOOSTER SOFT START
+  this->command(0x06);
+  this->data(0xC7);
+  this->data(0xCC);
+  this->data(0x28);
+  // COMMAND POWER ON
+  this->command(0x04);
+  this->wait_until_idle_();
+  delay(10);
+  // COMMAND PLL CONTROL
+  this->command(0x30);
+  this->data(0x3C);
+  // COMMAND TEMPERATURE SENSOR CALIBRATION
+  this->command(0x41);
+  this->data(0x00);
+  // COMMAND VCOM AND DATA INTERVAL SETTING
+  this->command(0x50);
+  this->data(0x77);
+  // COMMAND TCON SETTING
+  this->command(0x60);
+  this->data(0x22);
+  // COMMAND RESOLUTION SETTING
+  this->command(0x61);
+  this->data(0x02);
+  this->data(0x80);
+  this->data(0x01);
+  this->data(0x80);
+  // COMMAND VCM DC SETTING REGISTER
+  this->command(0x82);
+  this->data(0x1E);
+  this->command(0xE5);
+  this->data(0x03);
+}
+void HOT WaveshareEPaper7P5In::display() {
   // COMMAND DATA START TRANSMISSION 1
   this->command(0x10);
   this->start_data_();
