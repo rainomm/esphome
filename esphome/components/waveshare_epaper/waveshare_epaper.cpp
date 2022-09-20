@@ -1027,26 +1027,10 @@ void WaveshareEPaper7P5InBV3::initialize() {
 
   // COMMAND POWER SETTING
   this->command(0x01);
-  this->data(0x07);  // BD_EN=1 (00b: VCOM 01b: VDH 10b: VDL 11b: VDHR)
-  this->data(0x17);  // VGH=20V VGL=-20V
+  this->data(0x07);  // BD_EN=0 (00b: VCOM 01b: VDH 10b: VDL 11b: VDHR)
+  this->data(0x07);  // VGH=20V VGL=-20V
   this->data(0x3F);  // VDH=15.0V
   this->data(0x3F);  // VDL=-15.0V
-  this->data(0x03);  // VDL=3.0V
-
-  // COMMAND VCOM DC SETTING
-  this->command(0x82);
-  this->data(0x00);  // VDCS=-0.10V
-
-  // COMMAND BOOSTER SETTING
-  this->command(0x06);
-  this->data(0x27); // BT_PHA -- Start=10mS Drive=5 Off=6.58uS
-  this->data(0x27); // BT_PHB -- Start=10mS Drive=5 Off=6.58uS
-  this->data(0x2F); // BT_PHC1 -- Drive=6 Off=6.58uS
-  this->data(0x17); // BT_PHC2 -- Drive=3 Off=6.58uS
-
-  // COMMAND PLL CLOCK FREQUENCY SETTING
-  this->command(0x30);
-  this->data(0x06);  // FRS=50Hz
 
   // COMMAND POWER ON
   this->command(0x04);
@@ -1070,7 +1054,7 @@ void WaveshareEPaper7P5InBV3::initialize() {
 
   // COMMAND VCOM AND DATA INTERVAL SETTING
   this->command(0x50);
-  this->data(0x10); // BDZ=0 BDV=01(LUTW)  N2OCP=0 DDX=0(K/W)
+  this->data(0x11); // BDZ=0 BDV=01(LUTW)  N2OCP=0 DDX=0(K/W)
   this->data(0x07); // CDI=10 (VCOM and Data Interval)
   
   // COMMAND TCON SETTING
