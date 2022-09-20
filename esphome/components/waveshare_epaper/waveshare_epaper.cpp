@@ -1033,22 +1033,22 @@ void WaveshareEPaper7P5InBV3::initialize() {
   this->data(0x3F);  // VDL=-15.0V
   this->data(0x11);  // VDHR=5.8V
 
-  // VCOM DC SETTING
+  // COMMAND VCOM DC SETTING
   this->command(0x82);
   this->data(0x24);  // VDCS=-1.90V
 
-  // BOOSTER SETTING
+  // COMMAND BOOSTER SETTING
   this->command(0x06);
   this->data(0x27); // BT_PHA -- Start=10mS Drive=5 Off=3.34uS
   this->data(0x27); // BT_PHB -- Start=10mS Drive=5 Off=3.34uS
   this->data(0x2F); // BT_PHC1 -- Drive=6 Off=3.34uS
   this->data(0x17); // BT_PHC2 -- Drive=3 Off=3.34uS
 
-  // OSC SETTING
+  // COMMAND PLL CLOCK FREQUENCY SETTING
   this->command(0x30);
-  this->data(0x06);  // 2-0=100: N=4  ; 5-3=111: M=7  ;  3C=50Hz     3A=100HZ
+  this->data(0x06);  // FRS=50Hz
 
-  // POWER ON
+  // COMMAND POWER ON
   this->command(0x04);
   delay(100);  // NOLINT
   this->wait_until_idle_();
@@ -1133,35 +1133,27 @@ void WaveshareEPaper7P5InBV3::initialize() {
     this->data(lut_bb_7_i_n5_v2[count]);
 }
 void HOT WaveshareEPaper7P5InBV3::display() {
-  // COMMAND DATA START TRANSMISSION 1
+  // COMMAND DATA START TRANSMISSION 1 (B/W data)
   this->command(0x10);
+  delay(2);
   this->start_data_();
-  for (size_t i = 0; i < this->get_buffer_length_(); i++) {
-    uint8_t temp1 = this->buffer_[i];
-    for (uint8_t j = 0; j < 8; j++) {
-      uint8_t temp2;
-      if (temp1 & 0x80) {
-        temp2 = 0x03;
-      } else {
-        temp2 = 0x00;
-      }
-      temp2 <<= 4;
-      temp1 <<= 1;
-      j++;
-      if (temp1 & 0x80) {
-        temp2 |= 0x03;
-      } else {
-        temp2 |= 0x00;
-      }
-      temp1 <<= 1;
-      this->write_byte(temp2);
-    }
-    App.feed_wdt();
-  }
+  this->write_array(this->buffer_, this->get_buffer_length_());
   this->end_data_();
-  
+  delay(2);
+
+  // COMMAND DATA START TRANSMISSION 2 (RED data)
+  this->command(0x13);
+  delay(2);
+  this->start_data_();
+  for (size_t i = 0; i < this->get_buffer_length_(); i++)
+    this->write_byte(0x00);
+  this->end_data_();
+  delay(2);
+
   // COMMAND DISPLAY REFRESH
   this->command(0x12);
+  delay(100);  // NOLINT
+  this->wait_until_idle_();
 }
 int WaveshareEPaper7P5InBV3::get_width_internal() { return 800; }
 int WaveshareEPaper7P5InBV3::get_height_internal() { return 480; }
