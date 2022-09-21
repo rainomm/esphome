@@ -937,6 +937,22 @@ void WaveshareEPaper5P8In::dump_config() {
   LOG_PIN("  Busy Pin: ", this->busy_pin_);
   LOG_UPDATE_INTERVAL(this);
 }
+bool WaveshareEPaper7P5InBV2::wait_until_idle_() {
+  if (this->busy_pin_ == nullptr) {
+    return true;
+  }
+
+  const uint32_t start = millis();
+  while (this->busy_pin_->digital_read()) {
+    this->command(0x71);
+    if (millis() - start > this->idle_timeout_()) {
+      ESP_LOGI(TAG, "Timeout while displaying image!");
+      return false;
+    }
+    delay(10);
+  }
+  return true;
+}
 void WaveshareEPaper7P5InBV2::initialize() {
   this->reset_();
 
